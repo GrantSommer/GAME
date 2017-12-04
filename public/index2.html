@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>GAME</title>
+    <script src="//grantscdn.xyz/lib/jquery/3.2.1.min.js"></script>
+    <script src="//grantscdn.xyz/lib/grant.js/version/grant.js/0.1.js"></script>
+    <script src="//grantscdn.xyz/lib/socket.io/socket.io.js"></script>
+    <style>
+      #game {
+        border:1px solid black;
+      }
+      .game-box {
+        display:inline-block;
+      }
+      .game-box .chat {
+        position:absolute;
+        bottom:0;
+        right:0;
+        width:25%;
+        border:1px solid black;
+      }
+      .game-box .chat .chat-messages {
+        height:25%;
+        overflow:hidden;
+      }
+      .game-box .chat .chat-toolbar input {
+        width:100%;
+      }
+      .flex {
+        display:flex;
+      }
+      .menu {
+        display:none;
+      }
+      .status {
+        border:1px solid black;
+        height:25px;
+        width:100%;
+      }
+      .round-status {
+        position:fixed;
+        top:0;
+        left:0;
+        width:100%;
+        z-index:9999;
+      }
+      .round-status .content {
+        margin-left:auto;
+        margin-right:auto;
+        z-index:9999;
+        width:50%;
+      }
+      body {
+        user-select:none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="round-status">
+      <div class="content">
+        <h3>Round: <span class="round"></span></h3>
+        <meter max="0" min="0" value="0"></meter>
+      </div>
+    </div>
+    <h1>GAME</h1>
+    <div class="flex">
+      <div class="game-box">
+        <div class="menu">
+          <b>Inventory</b>
+          <div class="inventory">
+
+          </div>
+        </div>
+        <canvas id="game" width="600" height="450"></canvas>
+        <div class="status"></div>
+        <div class="chat">
+          <div class="chat-messages">
+
+          </div>
+          <div class="chat-toolbar">
+            <form class="chat-action">
+              <input type="text" class="chat-message" placeholder="Chat Message" />
+              <input type="submit" value="send" style="display:none;" />
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="room-info">
+
+      </div>
+    </div>
+    <dialog id="name">
+      <b>Identify Yourself!</b><br />
+      <form class="name-form">
+        <label>Name: <input type="text" class="name" value="" /></label><br />
+        <input type="submit" value="Identify" />
+      </form>
+    </dialog>
+    <dialog id="death">
+      <!-- Gets populated on death -->
+    </dialog>
+    <script>
+      function $_GET(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+      }
+
+      if(!$_GET("ip")){
+        window.open("http://GAME.pie.cool/serverlist","_self");
+      }
+
+      var socket=io($_GET("ip"));
+      var canvas=document.getElementById("game");
+      var ctx=canvas.getContext("2d");
+      var Keys={
+        "87":false, // w
+        "65":false, // a
+        "83":false, // s
+        "68":false, // d
+      };
+
+      function addChatMessage(data){
+        $(".chat .chat-messages").append("<b>"+data.from+"</b> "+data.message+"<br />");
+        $(".chat .chat-messages").animate({ scrollTop: $('.chat .chat-messages').prop("scrollHeight")}, 1000);
+      }
+      addChatMessage({"from":"[Client]","message":"Attempting to connect..."});
+      socket.on("connect",()=>{
+        $(".chat .chat-messages").html("");
+        addChatMessage({"from":"[Client]","message":"Connected!"});
+      });
+      socket.on("disconnect",()=>{
+        addChatMessage({"from":"[Client]","message":"Disconnected"});
+      });
+      socket.on("reconnect",()=>{
+        addChatMessage({"from":"[Client]","message":"Reconnecting..."});
+      });
+
+      /* Socket Stuff */
+      socket.on("dialog",dialogID=>{
+        if(dialogID==="name"){
+          socket.emit("identify",{
+            "name":localStorage.getItem("name")
+          });
+          console.log("DEBUG AT socket.on('dialog')");
+          return;
+        }
+        document.getElementById(dialogID).showModal();
+      });
+      socket.on("room info",roomInfo=>{
+        window.roomInfo=roomInfo;
+      });
+      socket.on("round status",round=>{
+        switch(round.status){
+          case "ended":
+          $(".round-status meter").attr("max",round.countdown/1000);
+          $(".round-status meter").val(round.countdown/1000);
+          $(".round-status meter").show();
+          $(".round-status .round").text("Ended");
+          window.roundCountdown=setInterval(()=>{
+            if(parseInt($(".round-status meter").val())){
+              $(".round-status meter").val(parseInt($(".round-status meter").val())-1);
+            }else{
+              clearInterval(window.roundCountdown);
+            }
+          },1000);
+          break;
+          case "start":
+          $(".round-status .round").text(window.round);
+          $(".round-status meter").hide();
+          break;
+        }
+      });
+      socket.on("chat",data=>{
+        if(!data.message){return;}
+        addChatMessage(data);
+      });
+      socket.on('uerror',msg=>{
+        alert("Error!\n"+msg);
+      });
+      socket.on("people",people=>{
+        window.people=people;
+        draw();
+      });
+      socket.on("me",me=>{
+        window._me=window.me;
+        window.me=me;
+      });
+      socket.on("clear chat",()=>{
+        $(".chat .chat-messages").html("");
+      });
+      socket.on("dead",data=>{
+        document.getElementById("death").showModal();
+        $("#death").html("<h2>You Died!</h2>You died from "+data.from+"<br /><button onclick='window.location.reload()'>Respawn</button>");
+        $("#death button").focus();
+        //socket.emit("disconnect");
+      });
+      socket.on("round",round=>{
+        window.round=round;
+      });
+      $(()=>{
+        socket.emit("ready");
+        $("input").focus(()=>{
+          ignoreKeys=true;
+        });
+        $("input").blur(()=>{
+          ignoreKeys=false;
+        });
+      });
+      $("#name .name-form").submit(e=>{
+        e.preventDefault();
+        document.getElementById("name").close();
+        var $form=$("#name .name-form");
+        socket.emit("identify",{
+          "name":$form.find(".name").val()
+        });
+      });
+      $(".chat .chat-toolbar .chat-action").submit(e=>{
+        e.preventDefault();
+        socket.emit("chat",$(".chat-action .chat-message").val());
+        $(".chat-action .chat-message").val("");
+      });
+      $("#game").click(e=>{
+        e.preventDefault();
+        socket.emit("click",{
+          "x":e.pageX-$("#game").offset().left,
+          "y":e.pageY-$("#game").offset().top
+        });
+      });
+
+      /* Key down */
+      var ignoreKeys=false;
+      $(document).keydown(e=>{
+        if(ignoreKeys){return;}
+        Keys[e.which]=true;
+      });
+      $(document).keyup(e=>{
+        if(ignoreKeys){return;}
+        Keys[e.which]=false;
+      });
+
+      var effects=[];
+
+      /* Functions */
+      function draw(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle="black";
+        effects.forEach(a=>{
+          if(a.time<=0){
+            effects.splice(effects.indexOf(a),1);
+          }
+          a.time--;
+          a.code.forEach(a=>{
+            eval(a);
+          });
+        });
+        ctx.fillStyle="black";
+
+        if(window.people){
+          people.forEach(a=>{
+            if(a.type==="zombie"){
+              ctx.fillStyle="green";
+            }
+            if(!a.projectile&&a.type!=="lootbox"){
+              ctx.fillRect(a.x,a.y,25,50);
+              ctx.fillText(a.nickname,a.x,a.y-20);
+              ctx.fillText(a.health+"/"+(a.maxHealth?a.maxHealth:"20"),a.x,a.y-10);
+            }else if(a.projectile){
+              ctx.fillRect(a.x,a.y,10,10);
+            }else if(a.type==="lootbox"){
+              ctx.fillStyle="tomato";
+              ctx.fillRect(a.x,a.y,25,25);
+              ctx.fillText(a.nickname,a.x,a.y-30);
+              ctx.fillText(a.health+"/"+a.maxHealth,a.x,a.y-20);
+              ctx.fillText("Expires: "+((a.age/1000).toString().split(".")[0])+"s",a.x,a.y-10);
+            }
+            ctx.fillStyle="black";
+          });
+        }
+        ctx.fillText(me.nickname,me.x,me.y-20);
+        ctx.fillText(me.health+"/20",me.x,me.y-10);
+        ctx.fillRect(me.x,me.y,25,50);
+        if(window._me){
+          if(window._me.health<window.me.health){
+            effects.push({
+              "code":[
+                "ctx.fillStyle='green';",
+                "ctx.fillText('+"+(me.health-_me.health)+"',"+(me.x+grant.random(-10,10))+","+(me.y-30+grant.random(-10,10))+");"
+              ],
+              "time":100
+            });
+          }else if(window._me.health>window.me.health){
+            effects.push({
+              "code":[
+                "ctx.fillStyle='red';",
+                "ctx.fillText('-"+(_me.health-me.health)+"',"+(me.x+grant.random(-10,10))+","+(me.y-30+grant.random(-10,10))+");"
+              ],
+              "time":100
+            });
+          }
+          ctx.fillStyle="black";
+        }
+
+        if(window.roomInfo&&!(me.x>canvas.width-canvas.width/3&&me.y<canvas.height-canvas.width/3)){
+          ctx.strokeRect(canvas.width-(canvas.width/3),0,canvas.width/3,canvas.width/3);
+          var startX=canvas.width-(canvas.width/3);
+          var startY=0;
+          var width=(canvas.width/3)/roomInfo[0].length;
+          var height=(canvas.width/3)/roomInfo.length;
+          roomInfo.forEach(a=>{
+            startX=canvas.width-(canvas.width/3);
+            a.forEach(b=>{
+              ctx.strokeStyle="black";
+              if(b.players.indexOf(me.nickname)>-1){
+                ctx.strokeStyle="red";
+                ctx.fillStyle="red";
+                ctx.fillRect(startX+width-10,startY+height-10,5,5);
+              }
+              var count=0;
+              b.players.forEach(a=>{
+                if(a!==me.nickname){
+                  count++;
+                }
+              });
+              if(count){
+                ctx.strokeStyle="black";
+                ctx.fillStyle="black";
+                ctx.fillRect(startX+width-15,startY+height-10,5,5);
+              }
+              ctx.strokeRect(startX,startY,width,height);
+              ctx.fillStyle="green";
+              ctx.fillText((b.zombies?b.zombies:""),startX+3,startY+13);
+              if(b.lootbox){
+                ctx.strokeStyle="tomato";
+                ctx.fillStyle="tomato";
+                ctx.fillRect(startX+width-20,startY+height-10,5,5);
+              }
+
+              startX+=width;
+            });
+            startY+=height;
+          });
+        }
+
+        $(".status").html("<b>Bullets:</b> "+me.bullets+" <b>Room:</b> "+me.room+" <b>Round:</b> "+window.round);
+      }
+      function sendKeys(){
+        socket.emit("keys",Keys);
+        requestAnimationFrame(sendKeys);
+      }
+      requestAnimationFrame(sendKeys);
+    </script>
+  </body>
+</html>
