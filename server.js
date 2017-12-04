@@ -234,37 +234,6 @@ setInterval(()=>{
   users.forEach(a=>{
     users[users.indexOf(a)].lastRoomUpdate-=(users[users.indexOf(a)].lastRoomUpdate?1:0);
   });
-  var _rooms=[];
-  RoomMap.forEach(a=>{
-    var _copy=[];
-    a.forEach(b=>{
-      _copy.push({
-        "players":[],
-        "zombies":0,
-        "id":b
-      });
-    });
-    _rooms.push(_copy);
-  });
-  _rooms.forEach(a=>{
-    a.forEach(c=>{
-      users.forEach(b=>{
-        if(b.room===c.id){
-          if(b.socket){
-            // players
-            c.players.push(b.nickname);
-          }
-          if(b.type==="zombie"){
-            c.zombies++;
-          }
-          if(b.type==="lootbox"){
-            c.lootbox=true;
-          }
-        }
-      });
-    });
-  });
-  broadcast("room info",_rooms);
 
   /*if(!Events.zombie.time){
 
@@ -364,6 +333,40 @@ setInterval(()=>{
     }
   });
 },1);
+
+setInterval(()=>{
+  var _rooms=[];
+  RoomMap.forEach(a=>{
+    var _copy=[];
+    a.forEach(b=>{
+      _copy.push({
+        "players":[],
+        "zombies":0,
+        "id":b
+      });
+    });
+    _rooms.push(_copy);
+  });
+  _rooms.forEach(a=>{
+    a.forEach(c=>{
+      users.forEach(b=>{
+        if(b.room===c.id){
+          if(b.socket){
+            // players
+            c.players.push(b.nickname);
+          }
+          if(b.type==="zombie"){
+            c.zombies++;
+          }
+          if(b.type==="lootbox"){
+            c.lootbox=true;
+          }
+        }
+      });
+    });
+  });
+  broadcast("room info",_rooms);
+},1000);
 
 function getRandomRoom(){
   var _rand=_.random(0,RoomMap.length-1);
