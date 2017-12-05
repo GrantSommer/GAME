@@ -430,8 +430,8 @@ io.on('connection', function(socket){
   }
   users.push({
     "socket":socket.id,
-    "x":0,
-    "y":0,
+    "x":300,
+    "y":200,
     "room":"Welcome_"+socket.id,
     "lastRoomUpdate":0,
     "health":20,

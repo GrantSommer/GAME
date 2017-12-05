@@ -11,7 +11,7 @@
       <i>Oh hey, someone wanted to download this!</i><br />
       <br />
       <b>Download should begin shortly</b><br />
-      If it doesn't click <a href="https://github.com/GrantSommer/GAME/archive/master.zip">here.</a><br />
+      If it doesn't click <a href="https://github.com/GrantSommer/GAME/archive/master.zip">here.</a><br /><br />
       <a href="/">&larr; Back to game</a>
       <script>
         setTimeout(()=>{
