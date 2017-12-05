@@ -2,7 +2,7 @@
 *No actual name*
 ---
 
-[Server List](/serverlist)
+[Server List](/serverlist) [GitHub](http://github.com/GrantSommer/GAME) [Download](/download)
 
 ##Your Objective
 To kill all of the zombies, to survive the longest.
