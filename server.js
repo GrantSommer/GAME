@@ -239,6 +239,7 @@ setInterval(()=>{
             }
           }
           if(opp.health<=0){
+            users[users.indexOf(users.find(b=>b.nickname===a.owner))].bullets+=Math.floor(opp.maxHealth);
             kill(opp,"bullet",a);
             users[users.indexOf(users.find(b=>b.nickname===a.owner))].coins+=(opp.socket?opp.coins:(opp.prize?opp.prize:1));
           }
