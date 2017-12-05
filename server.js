@@ -222,7 +222,11 @@ setInterval(()=>{
         if(opp.type==="lootbox"){
           if(opp.health<=0){
             var _bullets=_.random(10,50);
+            var _health=_.random(5,15);
+            var _coins=_.random(30,50);
             users[users.indexOf(users.find(b=>b.nickname===a.owner))].bullets+=_bullets;
+            users[users.indexOf(users.find(b=>b.nickname===a.owner))].health+=_health;
+            users[users.indexOf(users.find(b=>b.nickname===a.owner))].coins+=_coins;
             sockets[users[users.indexOf(users.find(b=>b.nickname===a.owner))].socket].emit("chat",{
               "from":"[Lootbox]",
               "message":"You collected "+_bullets+" bullet(s)"

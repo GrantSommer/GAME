@@ -12,6 +12,12 @@ Join your friends or play solo, with anyone else that decides to join.
 ##Coins
 You get coins by killing zombies
 
+##Lootbox
+Lootboxes spawn randomly on the map and are announced in chat.
+Lootboxes can be destroyed by shooting 5 (bug: six) bullets at them.
+
+Lootboxes can spawn bullets (random: 10-50), health (random: 5-15), coins (random: 30-50)
+
 ##Rounds
 Each round starts after all of the zombies are dead.
 Then you get a 10 second brake to visit the shop.
