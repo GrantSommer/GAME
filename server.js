@@ -4,25 +4,49 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var _=require("underscore");
 var request=require("request");
+var fs=require("fs");
 
-const CONFIG={
-  "registerList":true,
-  "name":"Official Server"
-};
+/* Nodemon Graceful Shutdown */
+process.once('SIGUSR2', function () {
+  console.log("Shutting down...");
+  broadcast("chat",{"from":"[Server]","message":"Shutting down..."});
+  request.post("http://GAME.pie.cool/serverlist/register.php",{
+    "form":{
+      "unregister":true,
+      "token":CONFIG.token
+    }
+  },(err,res,body)=>{
+    console.log("Unregistered from server list.");
+    process.kill(process.pid, 'SIGUSR2');
+  });
+});
 
-/*if(CONFIG.registerList){
+const CONFIG=JSON.parse(fs.readFileSync("config.json","utf8"));
+
+if(CONFIG.registerList){
   console.log("Registering server list identification...");
   request.post("http://GAME.pie.cool/serverlist/register.php",{
     "form":{
-      "name":CONFIG.name
+      "config":CONFIG
     }
   },(err,res,body)=>{
     console.log("Registered server list result:");
     console.log(body);
+    if(typeof body!=="object"){
+      body=JSON.parse(body);
+    }
+    if(!body.success){
+      console.log("Unable to register to server list:");
+      console.log(body.error);
+      process.exit(1);
+    }
+    console.log("Successfully registered server list");
+    CONFIG.token=body.token;
+    fs.writeFileSync("config.json",JSON.stringify(CONFIG));
   });
 }else{
   console.log("Server list identification disabled in config");
-}*/
+}
 
 app.use(express.static("public"));
 
@@ -210,10 +234,13 @@ setInterval(()=>{
         }else{
           if(opp.health>0){
             opp.health--;
+            if(opp.socket){
+              opp.regenTimeout=5;
+            }
           }
           if(opp.health<=0){
-            kill(opp,"bullet");
-            users[users.indexOf(users.find(b=>b.nickname===a.owner))].coins+=(opp.prize?opp.prize:1);
+            kill(opp,"bullet",a);
+            users[users.indexOf(users.find(b=>b.nickname===a.owner))].coins+=(opp.socket?opp.coins:(opp.prize?opp.prize:1));
           }
         }
         users.splice(users.indexOf(a),1);
@@ -373,7 +400,7 @@ function getRandomRoom(){
   return RoomMap[_rand][_.random(0,RoomMap[_rand].length-1)];
 }
 
-function kill(target,by){
+function kill(target,by,data){
   if(!target.socket||!sockets[target.socket]){
     users.splice(users.indexOf(target),1);
     return;
@@ -384,7 +411,7 @@ function kill(target,by){
     broadcast("chat",{"from":"Server","message":target.nickname+" died from a Zombie"});
     break;
     case "bullet":
-    sockets[target.socket].emit("dead",{"from":"Bullet"});
+    sockets[target.socket].emit("dead",{"from":(data.owner?data.owner+"'s ":"")+"Bullet"});
     broadcast("chat",{"from":"Server","message":target.nickname+" died from a Bullet"});
     break;
     default:
@@ -411,7 +438,9 @@ io.on('connection', function(socket){
     "maxHealth":20,
     "inventory":[],
     "bullets":50,
-    "coins":0
+    "coins":0,
+    "width":25,
+    "height":50
   });
   sockets[socket.id]=socket;
   socket.on("ready",()=>{
@@ -570,7 +599,7 @@ io.on('connection', function(socket){
         _users.push(user);
       }
     });
-    socket.emit("people",_users);
+    socket.emit("people",users);
   });
 
   socket.on("me",()=>{

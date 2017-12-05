@@ -54,6 +54,9 @@
       body {
         user-select:none;
       }
+      .flex> div{
+        padding:5px;
+      }
     </style>
   </head>
   <body>
@@ -184,6 +187,7 @@
           },1000);
           break;
           case "start":
+          $(".shop").hide();
           $(".round-status .round").text(window.round);
           $(".round-status meter").hide();
           break;
@@ -197,7 +201,15 @@
         alert("Error!\n"+msg);
       });
       socket.on("people",people=>{
-        window.people=people;
+        window.everyone=people;
+        var _people=[];
+        people.forEach(a=>{
+          if(a.room!==me.room){
+            return;
+          }
+          _people.push(a);
+        });
+        window.people=_people;
         draw();
       });
       socket.on("me",me=>{
@@ -298,6 +310,34 @@
             }
             ctx.fillStyle="black";
           });
+
+          ctx.fillStyle="black";
+          ctx.strokeStyle="black";
+          ctx.strokeRect(0,0,canvas.width/4,canvas.height/4);
+          var startY=10;
+          var unknowns=0;
+          var place=0;
+
+          everyone.sort((a,b)=>(a.coins>b.coins?-1:(a.coins<b.coins?1:0))).forEach(a=>{
+            if(!a.socket){return;}
+            if(!a.nickname){unknowns++;return;}
+            place++;
+            if(place===1){
+              ctx.fillStyle="gold";
+            }
+            ctx.fillText(a.nickname,3,startY+3);
+            ctx.fillText(a.coins,(canvas.width/4)-(a.coins.toString().length*8),startY+3);
+            startY+=10;
+            ctx.fillStyle="black";
+          });
+          if(unknowns){
+            ctx.fillText("... and "+unknowns+" unknown people",3,startY+3);
+          }
+          if(everyone.filter(a=>a.socket).length===1){
+            ctx.fillStyle="red";
+            ctx.fillText("Invite your friends! game.pie.cool",2,(canvas.height/4)-7);
+            ctx.fillStyle="black";
+          }
         }
         ctx.fillText(me.nickname,me.x,me.y-20);
         ctx.fillText(me.health+"/"+(me.maxHealth?me.maxHealth:"20"),me.x,me.y-10);
@@ -323,20 +363,20 @@
           ctx.fillStyle="black";
         }
 
-        if(window.roomInfo&&!(me.x>canvas.width-canvas.width/3&&me.y<canvas.height-canvas.width/3)){
-          ctx.strokeRect(canvas.width-(canvas.width/3),0,canvas.width/3,canvas.width/3);
-          var startX=canvas.width-(canvas.width/3);
+        if(window.roomInfo&&!(me.x>canvas.width-canvas.width/4&&me.y<canvas.height-canvas.width/4)){
+          ctx.strokeRect(canvas.width-(canvas.width/4),0,canvas.width/4,canvas.width/4);
+          var startX=canvas.width-(canvas.width/4);
           var startY=0;
-          var width=(canvas.width/3)/roomInfo[0].length;
-          var height=(canvas.width/3)/roomInfo.length;
+          var width=(canvas.width/4)/roomInfo[0].length;
+          var height=(canvas.width/4)/roomInfo.length;
           roomInfo.forEach(a=>{
-            startX=canvas.width-(canvas.width/3);
+            startX=canvas.width-(canvas.width/4);
             a.forEach(b=>{
               ctx.strokeStyle="black";
               if(b.players.indexOf(me.nickname)>-1){
                 ctx.strokeStyle="red";
                 ctx.fillStyle="red";
-                ctx.fillRect(startX+width-10,startY+height-10,5,5);
+                ctx.fillRect(startX+width-5,startY+height-5,5,5);
               }
               var count=0;
               b.players.forEach(a=>{
@@ -347,7 +387,7 @@
               if(count){
                 ctx.strokeStyle="black";
                 ctx.fillStyle="black";
-                ctx.fillRect(startX+width-15,startY+height-10,5,5);
+                ctx.fillRect(startX+width-10,startY+height-5,5,5);
               }
               ctx.strokeRect(startX,startY,width,height);
               ctx.fillStyle="green";
@@ -355,7 +395,7 @@
               if(b.lootbox){
                 ctx.strokeStyle="tomato";
                 ctx.fillStyle="tomato";
-                ctx.fillRect(startX+width-20,startY+height-10,5,5);
+                ctx.fillRect(startX+width-15,startY+height-5,5,5);
               }
 
               startX+=width;
